@@ -80,25 +80,37 @@ def process_video(source_img, frame_paths, face_analyser, reference_img=None):
 
 def process_img(source_img, target_path, face_analyser, reference_img=None):
     frame = cv2.imread(target_path)
-    faces = face_analyser.get(frame)
-    source_face = get_face(cv2.imread(source_img), face_analyser)
-    reference_face = (
-        get_face(cv2.imread(reference_img), face_analyser) if reference_img else None
-    )
-    if reference_img and reference_face is None:
+    target_faces = face_analyser.get(frame)
+    source_faces = face_analyser.get(cv2.imread(source_img))
+    if not target_faces:
+        print("\n[WARNING] No face detected in target image. Please try another one.\n")
+        return target_path, False
+    if not source_faces:
         print(
-            "\n[WARNING] No face detected in reference image. Please try with another one.\n"
+            "\n[WARNING] No face detected in source image. Please try with another one.\n"
+        )
+        return target_path, False
+    #source_face = get_face(cv2.imread(source_img), face_analyser)
+    #reference_face = (
+    #    get_face(cv2.imread(reference_img), face_analyser) if reference_img else None
+    #)
+    #if reference_img and reference_face is None:
+    #    print(
+    #        "\n[WARNING] No face detected in reference image. Please try with another one.\n"
+    #    )
+    #    return target_path, False
+
+    if len(source_faces) != len(target_faces):
+        print(
+            "\n[WARNING] Number of faces detected in source and target images do not match. Please try with another one.\n"
         )
         return target_path, False
 
-    for face in faces:
-        if reference_face:
-            if match_faces(face, reference_face):
-                result = face_swapper.get(frame, face, source_face, paste_back=True)
-                break
-        else:
-            result = face_swapper.get(frame, face, source_face, paste_back=True)
-            break
+    result = frame
+
+    for i, target_face, source_face in zip(range(len(target_faces)), target_faces, source_faces):
+        
+        result = face_swapper.get(result, target_face, source_face, paste_back=True)
     enhanced_result = enhance_face(result)
     if not is_face_swap_successful(enhanced_result):
         return target_path, False
